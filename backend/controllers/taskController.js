@@ -160,6 +160,12 @@ const updateTask = async (req, res) => {
 //@access Private (Admin)
 const deleteTask = async (req, res) => {
 	try {
+		const task = await Task.findById(req.params.id);
+
+		if (!task) return res.status(400).json({ message: "Task not found" });
+
+		await task.deleteone();
+		res.json({ message: "Task delete successfully" });
 	} catch (error) {
 		res.status(500).json({ message: "Server error", error: error.message });
 	}
@@ -168,8 +174,28 @@ const deleteTask = async (req, res) => {
 //@desc Update task status
 //@route PUT /api/tasks/:id/todo
 //@access Private
-const updateTaskStatus = (req, res) => {
+const updateTaskStatus = async (req, res) => {
 	try {
+		const task = await Task.findById(req.params.id);
+		if (!task) return res.status(404).json({ message: "Task not found" });
+
+		const isAssigned = task.assignedTo.some(
+			(userId) => userId.toString() === req.user.__id.toString(),
+		);
+
+		if (!isAssigned && req.user.role !== "admin") {
+			return res.status(403).json({ message: "Not authorized" });
+		}
+
+		task.status = req.body.status || task.status;
+
+		if (task.status === "Completed") {
+			task.todoCheckList.forEach((item) => (item.completed = true));
+			task.progress = 100;
+		}
+
+		await task.save();
+		res.json({ message: "Task status updated", task });
 	} catch (error) {
 		res.status(500).json({ message: "Server error", error: error.message });
 	}
@@ -180,6 +206,43 @@ const updateTaskStatus = (req, res) => {
 //@access Private
 const updateTaskChecklist = async (req, res) => {
 	try {
+		const { todoCheckList } = req.body;
+		const task = await Task.findById(req.params.id);
+
+		if (!task) return res.status(400).json({ message: "Task not found" });
+
+		if (!task.assignedTo.includes(req.user._id) && req.user.role !== "admin") {
+			return res
+				.status(403)
+				.json({ message: "not authorized to update checklist" });
+		}
+
+		task.todoCheckList = todoCheckList; //Replace with updated checklist
+
+		//Auto-update progress based on checklist completion
+		const completedCount = task.todoCheckList.filter(
+			(item) => item.completed,
+		).length;
+		const totalItems = task.todoCheckList.length;
+		task.progress =
+			totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
+
+		//Auro-mark task as completed if all items are checked
+		if (task.progess === 100) {
+			task.status = "Completed";
+		} else if (task.progress > 0) {
+			task.status = "In Progress";
+		} else {
+			task.status = "Pending";
+		}
+
+		await task.save();
+		const updateTask = await Task.findById(req.params.id).populate(
+			"assignedTo",
+			"name email profileImageUrl",
+		);
+
+		res.json({ message: "Task checklist updated", task: updetedTask });
 	} catch (error) {
 		res.status(500).json({ message: "Server error", error: error.message });
 	}
