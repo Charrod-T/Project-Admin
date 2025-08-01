@@ -92,7 +92,7 @@ const loginUser = async (req, res) => {
 };
 
 //@desc     Get user profile
-//@route    GET /api/auth/login
+//@route    GET /api/auth/profile
 //@acces    Private (Requires JWT)
 const getUserProfile = async (req, res) => {
 	try {
