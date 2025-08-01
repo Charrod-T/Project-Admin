@@ -127,12 +127,13 @@ const updateUserProfile = async (req, res) => {
 		}
 
 		const updaterUser = await user.save();
+
 		res.json({
-			_id: updaterUser.id,
-            name: updaterUser.name
-            email: updaterUser.email
-            role: updaterUser.role
-            token: generateToken(updaterUser._id)
+			_id: updateUser.id,
+			name: updateUser.name,
+			email: updateUser.email,
+			role: updateUser.role,
+			token: generateToken(updaterUser._id),
 		});
 	} catch (error) {
 		res.status(500).json({ message: "Server error", error: error.message });
